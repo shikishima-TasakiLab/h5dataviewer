@@ -13,7 +13,7 @@ setup(
     license='',
     packages=find_packages(),
     install_requires=[
-        "numpy", "h5py==2.10.0", "scipy", "opencv-python-headless", "PySide2", "pyqtgraph", "pyopengl", "pyopengl accelerate"
+        "numpy", "h5py==2.10.0", "scipy", "opencv-python-headless", "PySide2", "pyqtgraph", "pyopengl", "pyopengl_accelerate"
     ],
     entry_points={
         'console_scripts': [
