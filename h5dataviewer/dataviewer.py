@@ -37,7 +37,7 @@ COLOR_TF:np.ndarray = np.array([0.5, 0.5, 0.5, 1.0])
 class TreeWidgetItem(QTreeWidgetItem):
     def __init__(self, parent=None) -> None:
         QTreeWidgetItem.__init__(self, parent)
-    
+
     def __lt__(self, otherItem:QTreeWidgetItem):
         column = self.treeWidget().sortColumn()
         try:
@@ -67,7 +67,7 @@ class H5DataViewer(QMainWindow):
         self.tf_color = np.stack([COLOR_TF, COLOR_TF], axis=0)
 
         self.loadH5()
-    
+
     def parse(self):
         parser = argparse.ArgumentParser()
         parser.add_argument('file', type=str)
@@ -77,7 +77,7 @@ class H5DataViewer(QMainWindow):
         parser.add_argument('--tf-axis-width', type=float, default=5.0)
         parser.add_argument('--range-min', type=float, default=0.0)
         parser.add_argument('--range-max', type=float, default=100.0)
-    
+
         args = parser.parse_args()
         self.config[CONFIG_FILE] = args.file
         self.config[CONFIG_PREVIEW_WIDTH] = args.preview_width
@@ -86,7 +86,7 @@ class H5DataViewer(QMainWindow):
         self.config[CONFIG_AXIS_WIDTH] = args.tf_axis_width
         self.config[CONFIG_RANGE_MIN] = args.range_min
         self.config[CONFIG_RANGE_MAX] = args.range_max
-    
+
     def __Del__(self):
         if self.h5file:
             self.h5file.close()
@@ -153,15 +153,15 @@ class H5DataViewer(QMainWindow):
         self.config['preview'] = {}
         preview_key_list:List[str] = []
         get_h5keys(self.h5file[H5_KEY_DATA + '/0'], preview_key_list)
-        
+
         itr:int = 0
         pose_flag:bool = False
         for preview_key in preview_key_list:
             preview_dict:Dict[str, Union[QLabel, GLViewWidget]] = {}
-            
+
             data_type:str = convert_str(self.h5file[H5_KEY_DATA + '/0/' + preview_key].attrs.get(H5_ATTR_TYPE))
             preview_dict['type'] = data_type
-            if {data_type} <= {TYPE_MONO8, TYPE_MONO16, TYPE_BGR8, TYPE_RGB8, TYPE_BGRA8, TYPE_RGBA8, TYPE_DEPTH, TYPE_SEMANTIC2D}:
+            if {data_type} <= {TYPE_MONO8, TYPE_MONO16, TYPE_BGR8, TYPE_RGB8, TYPE_BGRA8, TYPE_RGBA8, TYPE_DEPTH, TYPE_DISPARITY, TYPE_SEMANTIC2D}:
                 preview_layout = QVBoxLayout(self.ui.dataWidget)
                 preview_label = QLabel(preview_key)
                 preview_layout.addWidget(preview_label)
@@ -219,7 +219,7 @@ class H5DataViewer(QMainWindow):
             else:
                 parent = pose_nodes[frame_id]
             parent[child_frame_id] = node
-        
+
         def setTftree(parentitem:TreeWidgetItem, tree_config:Dict[str, Union[str, dict]]):
             for key_frameid, item_frameid in tree_config.items():
                 data = self.pose_dict[key_frameid][CONFIG_TAG_KEY]
@@ -227,7 +227,7 @@ class H5DataViewer(QMainWindow):
                 parentitem.addChild(item)
                 setTftree(item, item_frameid)
                 item.setExpanded(True)
-        
+
         for key_frameid, item_frameid in self.tf_tree_dict.items():
             item = TreeWidgetItem([key_frameid])
             self.ui.tfTree.addTopLevelItem(item)
@@ -273,7 +273,7 @@ class H5DataViewer(QMainWindow):
         self.viewDialog = QDialog(self)
         self.viewDialog.resize(800, 600)
         view_layout = QVBoxLayout(self.viewDialog)
-        if {data_type} <= {TYPE_MONO8, TYPE_MONO16, TYPE_BGR8, TYPE_RGB8, TYPE_BGRA8, TYPE_RGBA8, TYPE_DEPTH, TYPE_SEMANTIC2D}:
+        if {data_type} <= {TYPE_MONO8, TYPE_MONO16, TYPE_BGR8, TYPE_RGB8, TYPE_BGRA8, TYPE_RGBA8, TYPE_DEPTH, TYPE_DISPARITY, TYPE_SEMANTIC2D}:
             view_widget = QLabel()
             view_layout.addWidget(view_widget)
             config['widget'] = view_widget
@@ -288,7 +288,7 @@ class H5DataViewer(QMainWindow):
             view_widget.addItem(view_item)
             config['item'] = view_item
             self.config_preview_func(data_type, config)
-    
+
     def config_preview_func(self, data_type:str, config:Dict[str, str]):
         if data_type == TYPE_MONO8:
             config['func'] = self.__preview_mono8
@@ -303,6 +303,8 @@ class H5DataViewer(QMainWindow):
         elif data_type == TYPE_RGBA8:
             config['func'] = self.__preview_rgba8
         elif data_type == TYPE_DEPTH:
+            config['func'] = self.__preview_depth
+        elif data_type == TYPE_DISPARITY:
             config['func'] = self.__preview_depth
         elif data_type == TYPE_SEMANTIC2D:
             config['func'] = self.__preview_semantic2d
@@ -359,7 +361,7 @@ class H5DataViewer(QMainWindow):
         else:
             parent_path = self.__restore_path(parent)
         return os.path.join(parent_path, item.text(0))
-        
+
     def dataTree_selectionChanged(self) -> None:
         self.ui.attrTree.clear()
         item = self.ui.dataTree.selectedItems()[0]
@@ -372,15 +374,15 @@ class H5DataViewer(QMainWindow):
             self.ui.attrTree.addTopLevelItem(attrItem)
             attrItem = TreeWidgetItem(['(dtype)', str(self.h5file[path].dtype)])
             self.ui.attrTree.addTopLevelItem(attrItem)
-        
+
         for key, obj in self.h5file[path].attrs.items():
             attrItem = TreeWidgetItem([key, str(obj)])
             self.ui.attrTree.addTopLevelItem(attrItem)
-        
+
         data_type = self.h5file[path].attrs.get(H5_ATTR_TYPE)
         if data_type is None:
             self.ui.viewButton.setEnabled(False)
-        elif {data_type} <= {TYPE_MONO8, TYPE_MONO16, TYPE_BGR8, TYPE_RGB8, TYPE_BGRA8, TYPE_RGBA8, TYPE_DEPTH, TYPE_SEMANTIC2D, TYPE_POINTS, TYPE_SEMANTIC3D, TYPE_POSE}:
+        elif {data_type} <= {TYPE_MONO8, TYPE_MONO16, TYPE_BGR8, TYPE_RGB8, TYPE_BGRA8, TYPE_RGBA8, TYPE_DEPTH, TYPE_DISPARITY, TYPE_SEMANTIC2D, TYPE_POINTS, TYPE_SEMANTIC3D, TYPE_POSE}:
             self.ui.viewButton.setEnabled(True)
         else:
             self.ui.viewButton.setEnabled(False)
@@ -442,7 +444,7 @@ class H5DataViewer(QMainWindow):
         h, w = img_colored.shape[:2]
         qimg = QImage(img_colored.data, w, h, QImage.Format_BGR888)
         config['widget'].setPixmap(QPixmap.fromImage(qimg).scaled(self.config[CONFIG_PREVIEW_WIDTH], self.config[CONFIG_PREVIEW_HEIGHT], Qt.KeepAspectRatio, Qt.FastTransformation))
-        
+
     def __preview_semantic2d(self, h5data:h5py.Dataset, config:Dict[str, QLabel]):
         src:np.ndarray = h5data[()]
         dst:np.ndarray = np.zeros((src.shape[0], src.shape[1], 3), dtype=np.uint8)
@@ -501,7 +503,7 @@ class H5DataViewer(QMainWindow):
                 rot_tmp:Rotation = Rotation.from_quat(pose[SUBTYPE_ROTATION][()])
                 tr:np.ndarray = parent_tf[1].apply(tr_tmp) + parent_tf[0]
                 rot:Rotation = parent_tf[1] * rot_tmp
-            
+
             self.__draw_tf(config, key, (tr, rot), parent_tf)
 
             for child_key, child_item in children.items():
